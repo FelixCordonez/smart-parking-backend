@@ -16,8 +16,8 @@ const tempStorage = multer({ dest: 'uploads/' });
 //          que es una operación atómica en el mismo filesystem. Esto evita que
 //          la app móvil lea una imagen a medio escribir (fotos "cortadas").
 const UPLOAD_DIR = path.resolve('uploads');
-const TEMP_NAME  = 'latest_temp.jpg';
-const FINAL_NAME = 'latest.jpg';
+const TEMP_NAME  = 'latest_raw_temp.jpg';
+const FINAL_NAME = 'latest_raw.jpg';
 
 const liveStorage = multer.diskStorage({
   destination: (_req, _file, cb) => {

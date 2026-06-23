@@ -20,21 +20,27 @@ import warnings
 # SECCIÓN 1: IMPORTACIONES (con mensajes de error descriptivos)
 # ──────────────────────────────────────────────────────────────
 try:
+    # pyrefly: ignore [missing-import]
     import torch
+    # pyrefly: ignore [missing-import]
     import torchvision
+    # pyrefly: ignore [missing-import]
     from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
+    # pyrefly: ignore [missing-import]
     from torchvision.transforms import functional as F
 except ImportError:
     print(json.dumps({"error": "Librería 'torch' o 'torchvision' no instalada. Ejecuta: pip install torch torchvision"}))
     sys.exit(1)
 
 try:
+    # pyrefly: ignore [missing-import]
     import cv2
 except ImportError:
     print(json.dumps({"error": "Librería 'opencv-python' no instalada. Ejecuta: pip install opencv-python-headless"}))
     sys.exit(1)
 
 try:
+    # pyrefly: ignore [missing-import]
     from shapely.geometry import Point, Polygon
 except ImportError:
     print(json.dumps({"error": "Librería 'shapely' no instalada. Ejecuta: pip install shapely"}))
@@ -45,24 +51,28 @@ except ImportError:
 # SECCIÓN 2: MAPA DE ROIs (Regiones de Interés por espacio)
 # ──────────────────────────────────────────────────────────────
 PARKING_ROIS: dict[str, list[tuple[int, int]]] = {
-    # ── MAPEO INVERSO: Cámara lado IZQUIERDO → App lado DERECHO ──────────────
-    "Derecha_1": [(213, 459), (2,   455), (0,   478), (215, 477)],
-    "Derecha_2": [(224, 408), (5,   412), (2,   455), (213, 459)],
-    "Derecha_3": [(235, 367), (45,  372), (5,   412), (224, 408)],
-    "Derecha_4": [(243, 331), (75,  316), (45,  372), (235, 367)],
-    "Derecha_5": [(249, 297), (128, 291), (75,  316), (243, 331)],
-    "Derecha_6": [(257, 271), (171, 267), (128, 291), (249, 297)],
-    "Derecha_7": [(261, 255), (186, 254), (171, 267), (257, 271)],
-    "Derecha_8": [(267, 235), (202, 235), (186, 254), (261, 255)],
+    # ── MAPEO INVERSO: Cámara lado IZQUIERDO → App lado DERECHO (9 espacios) ──────────────
+    "Derecha_1": [(146, 476), (1, 473), (1, 380), (160, 403)],
+    "Derecha_2": [(160, 403), (1, 380), (18, 338), (180, 359)],
+    "Derecha_3": [(180, 359), (18, 338), (69, 309), (185, 332)],
+    "Derecha_4": [(185, 332), (69, 309), (111, 300), (204, 301)],
+    "Derecha_5": [(204, 301), (111, 300), (115, 286), (217, 291)],
+    "Derecha_6": [(217, 291), (115, 286), (138, 266), (226, 270)],
+    "Derecha_7": [(226, 270), (138, 266), (155, 259), (231, 260)],
+    "Derecha_8": [(231, 260), (155, 259), (176, 249), (242, 254)],
+    "Derecha_9": [(242, 254), (176, 249), (195, 237), (247, 237)],
 
-    # ── MAPEO INVERSO: Cámara lado DERECHO → App lado IZQUIERDO ─────────────
-    "Izquierda_1": [(471, 464), (637, 462), (635, 416), (448, 412)],
-    "Izquierda_2": [(435, 367), (636, 358), (635, 416), (448, 412)],
-    "Izquierda_3": [(422, 338), (632, 306), (636, 358), (435, 367)],
-    "Izquierda_4": [(407, 304), (567, 266), (632, 306), (422, 338)],
-    "Izquierda_5": [(393, 280), (542, 251), (567, 266), (407, 304)],
-    "Izquierda_6": [(385, 257), (493, 245), (542, 251), (393, 280)],
-    "Izquierda_7": [(379, 239), (495, 225), (493, 245), (385, 257)],
+    # ── MAPEO INVERSO: Cámara lado DERECHO → App lado IZQUIERDO (10 espacios) ─────────────
+    "Izquierda_1": [(600, 455), (637, 449), (636, 404), (577, 410)],
+    "Izquierda_2": [(577, 410), (636, 404), (635, 317), (530, 356)],
+    "Izquierda_3": [(530, 356), (635, 317), (621, 290), (512, 334)],
+    "Izquierda_4": [(512, 334), (621, 290), (583, 289), (488, 323)],
+    "Izquierda_5": [(488, 323), (583, 289), (554, 260), (453, 289)],
+    "Izquierda_6": [(453, 289), (554, 260), (523, 241), (442, 268)],
+    "Izquierda_7": [(442, 268), (523, 241), (499, 230), (426, 258)],
+    "Izquierda_8": [(426, 258), (499, 230), (478, 221), (417, 244)],
+    "Izquierda_9": [(417, 244), (478, 221), (463, 218), (409, 235)],
+    "Izquierda_10": [(409, 235), (463, 218), (452, 209), (405, 222)],
 }
 
 # Pre-compilar polígonos Shapely
@@ -168,9 +178,10 @@ def analyze_image(image_path: str, model_path: str) -> dict:
     # Guardar la imagen con escritura atómica para evitar que la app
     # lea una imagen a medio escribir. Se escribe a un temporal y luego
     # se renombra (os.replace es atómico en Linux).
-    temp_path = image_path + '.tmp'
+    output_path = os.path.join(os.path.dirname(image_path), 'latest.jpg')
+    temp_path = output_path + '.tmp'
     cv2.imwrite(temp_path, image)
-    os.replace(temp_path, image_path)
+    os.replace(temp_path, output_path)
 
     # 6. Point-in-Polygon: determinar qué espacios están ocupados
     occupied_spaces: set[str] = set()
